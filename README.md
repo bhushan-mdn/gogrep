@@ -5,5 +5,8 @@ A re-implementation of grep using go
 ## TODO
 
 - [x] Add regular expressions based search
+- [x] Add read from stdin support
 - [ ] Add more flags and functionality
-- [ ] Possibly use concurrency and go's other advantages for better performance
+  - [ ] Add ignore case `-i` flag
+  - [x] Add support for multiple files
+- [ ] Use concurrency for better performance

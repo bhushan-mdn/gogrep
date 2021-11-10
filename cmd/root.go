@@ -12,19 +12,25 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "go-grep PATTERN FILE",
-	Short: "go-grep is an implementation of grep in go",
+	Use:   "gogrep PATTERN [FILE]",
+	Short: "gogrep is an implementation of grep in go",
 	Run:   Run,
 }
 
 func Run(cmd *cobra.Command, args []string) {
-	if len(args) < 2 {
+	if len(args) < 1 {
 		log.Fatal("Missing required arguments.")
 		os.Exit(1)
+	} else if len(args) < 2 {
+		pattern := args[0]
+		r := GetRegexp(pattern)
+		GrepStdin(r)
+	} else {
+		pattern := args[0]
+		files := args[1:]
+		r := GetRegexp(pattern)
+		GrepFile(r, files)
 	}
-	pattern := args[0]
-	file := args[1]
-	Search(pattern, file)
 }
 
 func Execute() {
@@ -34,26 +40,72 @@ func Execute() {
 	}
 }
 
-func Search(pattern string, file string) {
-	f, err := os.Open(file)
+func GetRegexp(pattern string) *regexp.Regexp {
+	r, err := regexp.Compile(pattern)
+	if err != nil {
+		log.Fatal("Invalid pattern expression. Error: ", err)
+		os.Exit(1)
+	}
+	return r
+}
+
+func GrepFile(r *regexp.Regexp, files []string) {
+	if len(files) == 1 {
+		filename := files[0]
+		text := ReadFile(filename)
+		PrintMatches(text, r)
+	} else {
+		for _, filename := range files {
+			text := ReadFile(filename)
+			PrintMatchesWithFilename(text, r, filename)
+		}
+	}
+}
+
+func ReadFile(filename string) []string {
+	f, err := os.Open(filename)
 	if err != nil {
 		log.Fatal("File not found. Error: ", err)
 		os.Exit(1)
 	}
 	defer f.Close()
 
-	r, err := regexp.Compile(pattern)
-	if err != nil {
-		log.Fatal("Invalid pattern expression. Error: ", err)
-		os.Exit(1)
-	}
-
 	s := bufio.NewScanner(f)
+	text := Textify(s)
+	return text
+}
+
+func GrepStdin(r *regexp.Regexp) {
+	s := bufio.NewScanner(os.Stdin)
+	text := Textify(s)
+	PrintMatches(text, r)
+}
+
+func Textify(s *bufio.Scanner) []string {
+	s.Split(bufio.ScanLines)
+	var text []string
+
 	for s.Scan() {
-		text := s.Text()
-		if match := r.FindString(text); match != "" {
+		text = append(text, s.Text())
+	}
+	return text
+}
+
+func PrintMatches(text []string, r *regexp.Regexp) {
+	for _, line := range text {
+		if match := r.FindString(line); match != "" {
 			red := color.New(color.FgRed, color.Bold).SprintFunc()
-			fmt.Println(r.ReplaceAllString(text, red(match)))
+			fmt.Println(r.ReplaceAllString(line, red(match)))
+		}
+	}
+}
+
+func PrintMatchesWithFilename(text []string, r *regexp.Regexp, filename string) {
+	for _, line := range text {
+		if match := r.FindString(line); match != "" {
+			red := color.New(color.FgRed, color.Bold).SprintFunc()
+			magenta := color.New(color.FgMagenta).SprintFunc()
+			fmt.Printf("%s:%s\n", magenta(filename), r.ReplaceAllString(line, red(match)))
 		}
 	}
 }
