@@ -12,7 +12,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "gogrep PATTERN [FILE]",
+	Use:   "gogrep PATTERN [FILE]...",
 	Short: "gogrep is an implementation of grep in go",
 	Run:   Run,
 }
